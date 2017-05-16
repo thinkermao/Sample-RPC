@@ -1,9 +1,10 @@
-package net.hashcoding.samplerpc.common;
+package net.hashcoding.samplerpc.common.handle;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import net.hashcoding.samplerpc.common.Command;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
 import java.nio.ByteBuffer;

@@ -32,6 +32,12 @@ public class Command {
     // 存放具体的方法调用信息、调用结果等
     private byte[] body;
 
+    public Command(int type) {
+        this.type = type;
+        this.body = null;
+        this.requestId = IDS.incrementAndGet();
+    }
+
     public Command(int type, byte[] body) {
         this.type = type;
         this.body = body;
@@ -42,6 +48,10 @@ public class Command {
         this.type = type;
         this.body = SerializeUtils.serialize(object);
         this.requestId = IDS.incrementAndGet();
+    }
+
+    public static Command heartBeatRequest() {
+        return new Command(Command.HEART_BEAT_REQUEST);
     }
 
     // command 长度 = type(4) + requestId(8) + body.length
@@ -61,12 +71,12 @@ public class Command {
         return body;
     }
 
-    public void setBody(byte[] body) {
-        this.body = body;
-    }
-
     public void setBody(Object o) {
         this.body = SerializeUtils.serialize(o);
+    }
+
+    public void setBody(byte[] body) {
+        this.body = body;
     }
 
     public <T> T factoryFromBody() {
