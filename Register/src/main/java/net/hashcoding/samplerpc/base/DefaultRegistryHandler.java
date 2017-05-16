@@ -5,7 +5,6 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import net.hashcoding.samplerpc.common.entity.Host;
 import net.hashcoding.samplerpc.common.message.Command;
 import net.hashcoding.samplerpc.common.message.RegisterRequest;
-import net.hashcoding.samplerpc.common.utils.LogUtils;
 
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -65,8 +64,6 @@ public class DefaultRegistryHandler extends SimpleChannelInboundHandler<Command>
                 }
                 break;
             }
-            case Command.HEART_BEAT_REQUEST:
-                LogUtils.d(TAG, "receive heart beat message");
             default:
                 // NOTICE: must be last handle
                 break;

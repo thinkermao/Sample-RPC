@@ -33,13 +33,12 @@ import java.util.concurrent.TimeUnit;
 public class DefaultServer implements Server {
     private static final String TAG = "DefaultServer";
 
-    private final ServerBootstrap server;
-    private final Bootstrap register;
-    private final EventLoopGroup loopGroupBoss;
-    private final EventLoopGroup loopGroupWorkers;
-
     private final Host remote;
     private final Host local;
+    private final Bootstrap register;
+    private final ServerBootstrap server;
+    private final EventLoopGroup loopGroupBoss;
+    private final EventLoopGroup loopGroupWorkers;
     private final ConcurrentHashMap<String, Object> services;
 
     private DefaultServer(Host remote, Host local,
@@ -91,8 +90,9 @@ public class DefaultServer implements Server {
         try {
             server.bind().sync();
         } catch (InterruptedException e) {
-            throw new RuntimeException("server.bind() " +
-                    "InterruptedException", e);
+            LogUtils.d(TAG, e);
+            // TODO: bind 失败后不能提供服务，需要重启
+            throw new RuntimeException(e);
         }
     }
 
@@ -161,7 +161,7 @@ public class DefaultServer implements Server {
         Command result = new Command(Command.INVOKE_RESPONSE, null);
         result.setRequestId(command.getRequestId());
 
-        LogUtils.d(TAG, "received one invoke " + invoke.getInterfaceName());
+        LogUtils.d(TAG, "received invoke: " + invoke.getInterfaceName());
 
         // 找到服务
         Object service = services.get(invoke.getInterfaceName());
