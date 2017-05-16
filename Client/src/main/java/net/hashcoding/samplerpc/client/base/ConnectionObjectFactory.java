@@ -27,6 +27,7 @@ public class ConnectionObjectFactory extends BasePooledObjectFactory<Channel> {
         LogUtils.d(TAG, "try create new connection");
         Bootstrap bootstrap = new Bootstrap();
         bootstrap.channel(NioSocketChannel.class)
+                .remoteAddress(remote.toAddress())
                 .group(new NioEventLoopGroup(1))
                 .option(ChannelOption.TCP_NODELAY, true)
                 .option(ChannelOption.SO_KEEPALIVE, false)
@@ -36,7 +37,8 @@ public class ConnectionObjectFactory extends BasePooledObjectFactory<Channel> {
                         ChannelPipeline pipe = ch.pipeline();
                         pipe.addLast(new IdleStateHandler(0, 5, 0));
                         pipe.addLast(new HeartBeatSendTrigger());
-                        pipe.addLast(new ConnectionWatchdog());
+                        pipe.addLast(new ConnectionWatchdog(
+                                ConnectionObjectFactory.this::inactive));
                         pipe.addLast(new MessageEncoder());
                         pipe.addLast(new MessageDecoder());
                         pipe.addLast(new DefaultClientHandler());
@@ -44,7 +46,7 @@ public class ConnectionObjectFactory extends BasePooledObjectFactory<Channel> {
                     }
                 });
         try {
-            ChannelFuture future = bootstrap.connect(remote.toAddress()).sync();
+            ChannelFuture future = bootstrap.connect().sync();
             return future.channel();
         } catch (InterruptedException e) {
             LogUtils.e(TAG, e);
@@ -72,5 +74,9 @@ public class ConnectionObjectFactory extends BasePooledObjectFactory<Channel> {
     public boolean validateObject(PooledObject<Channel> p) {
         Channel object = p.getObject();
         return object.isActive();
+    }
+
+    private void inactive(ChannelHandlerContext context) {
+        // TODO:
     }
 }

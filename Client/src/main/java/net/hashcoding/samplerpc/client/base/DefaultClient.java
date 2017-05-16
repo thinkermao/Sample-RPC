@@ -4,12 +4,11 @@ import io.netty.channel.Channel;
 import net.hashcoding.samplerpc.base.RegisterCurator;
 import net.hashcoding.samplerpc.client.Client;
 import net.hashcoding.samplerpc.client.Proxy;
-import net.hashcoding.samplerpc.client.ResponseMapHelper;
 import net.hashcoding.samplerpc.common.Promise;
 import net.hashcoding.samplerpc.common.entity.Host;
 import net.hashcoding.samplerpc.common.message.Command;
-import net.hashcoding.samplerpc.common.message.Request;
-import net.hashcoding.samplerpc.common.message.Response;
+import net.hashcoding.samplerpc.common.message.InvokeRequest;
+import net.hashcoding.samplerpc.common.message.InvokeResponse;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
 import java.lang.reflect.Method;
@@ -76,10 +75,10 @@ public class DefaultClient implements Client {
         return promise.getFuture();
     }
 
-    public Response sendMessage(Class<?> clazz, Method method, Object[] args) {
+    public InvokeResponse sendMessage(Class<?> clazz, Method method, Object[] args) {
         LogUtils.d(TAG, "try send message: " + clazz.getCanonicalName());
 
-        Request invoke = new Request();
+        InvokeRequest invoke = new InvokeRequest();
         invoke.setInterfaceName(clazz.getCanonicalName());
         invoke.setMethodName(method.getName());
         invoke.setArguments(args);
@@ -94,7 +93,7 @@ public class DefaultClient implements Client {
 
         ChannelConf channelWrapper = selectChannel(clazz.getCanonicalName());
         if (channelWrapper == null) {
-            Response response = new Response();
+            InvokeResponse response = new InvokeResponse();
             response.setThrowReason("Channel is not active");
             return response;
         }
@@ -106,7 +105,7 @@ public class DefaultClient implements Client {
             LogUtils.e(TAG, e);
         }
         if (channel == null) {
-            Response response = new Response();
+            InvokeResponse response = new InvokeResponse();
             response.setThrowReason("Channel is not available");
             return response;
         }
@@ -114,16 +113,16 @@ public class DefaultClient implements Client {
         Command command = new Command(Command.INVOKE_REQUEST, invoke);
         Channel finalChannel = channel;
 
-        Promise<Response> promise = new Promise<>();
+        Promise<InvokeResponse> promise = new Promise<>();
 
         ResponseMapHelper.responses.put(command.getRequestId(), promise);
 
         channel.writeAndFlush(command);
-        Future<Response> future = promise.getFuture();
+        Future<InvokeResponse> future = promise.getFuture();
         try {
             return future.get(requestTimeoutMillis, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            Response response = new Response();
+            InvokeResponse response = new InvokeResponse();
             response.setThrowReason("require timeout");
             return response;
         } finally {

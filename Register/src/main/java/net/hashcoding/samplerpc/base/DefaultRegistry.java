@@ -6,22 +6,26 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.internal.ConcurrentSet;
 import net.hashcoding.samplerpc.Registry;
+import net.hashcoding.samplerpc.common.Promise;
 import net.hashcoding.samplerpc.common.entity.Host;
-import net.hashcoding.samplerpc.common.handle.ConnectionWatchdog;
-import net.hashcoding.samplerpc.common.handle.HeartBeatReceiveTrigger;
-import net.hashcoding.samplerpc.common.handle.MessageDecoder;
-import net.hashcoding.samplerpc.common.handle.MessageEncoder;
+import net.hashcoding.samplerpc.common.handle.*;
+import net.hashcoding.samplerpc.common.message.RegisterRequest;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 
 /**
  * Created by MaoChuan on 2017/5/13.
  */
-public class DefaultRegistry implements Registry, DefaultRegistryHandler.Callback {
+public class DefaultRegistry implements Registry,
+        DefaultRegistryHandler.Callback {
     private static final String TAG = "DefaultRegistry";
 
     private final ServerBootstrap server;
@@ -29,46 +33,28 @@ public class DefaultRegistry implements Registry, DefaultRegistryHandler.Callbac
     private final EventLoopGroup loopGroupWorkers;
 
     private final Host host;
-    // 存放对外提供的服务对象 <interface, services>
-    private final ConcurrentHashMap<String, List<Host>> services;
+    private final ConcurrentHashMap<String, ConcurrentSet<Host>> provideServices;
+    private final ConcurrentHashMap<Host, Host> providers;
 
     public DefaultRegistry(Host server) {
         this.host = server;
 
-        this.services = new ConcurrentHashMap<>();
+        this.providers = new ConcurrentHashMap<>();
+        this.provideServices = new ConcurrentHashMap<>();
         this.server = new ServerBootstrap();
 
         int availableProcessors = Runtime.getRuntime().availableProcessors();
 
-        LogUtils.i(TAG, "processors:" + String.valueOf(availableProcessors));
+        LogUtils.i(TAG, "processors:"
+                + String.valueOf(availableProcessors));
         this.loopGroupBoss = new NioEventLoopGroup(1);
-        this.loopGroupWorkers = new NioEventLoopGroup(availableProcessors - 1);
+        this.loopGroupWorkers = new NioEventLoopGroup(
+                availableProcessors - 1);
     }
 
     @Override
     public void start() {
-        LogUtils.d(TAG, "start register at: " + host.toString());
-        server.group(loopGroupBoss, loopGroupWorkers)
-                .channel(NioServerSocketChannel.class)
-                .option(ChannelOption.SO_BACKLOG, 1024) // 链接队列个数
-                .option(ChannelOption.SO_REUSEADDR, true)
-                .childOption(ChannelOption.TCP_NODELAY, true)
-                .childOption(ChannelOption.SO_KEEPALIVE, false)
-                .localAddress(host.toAddress())
-                .childHandler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    public void initChannel(SocketChannel ch) throws Exception {
-                        ChannelPipeline pipe = ch.pipeline();
-                        pipe.addLast(new IdleStateHandler(6, 0, 0));
-                        pipe.addLast(new HeartBeatReceiveTrigger(
-                                DefaultRegistry.this::connectionInterrupted));
-                        pipe.addLast(new ConnectionWatchdog(
-                                DefaultRegistry.this::connectionInterrupted));
-                        pipe.addLast(new MessageDecoder());
-                        pipe.addLast(new MessageEncoder());
-                        pipe.addLast(new DefaultRegistryHandler(DefaultRegistry.this));
-                    }
-                });
+        prepareAcceptor();
 
         try {
             ChannelFuture future = server.bind().sync();
@@ -81,6 +67,18 @@ public class DefaultRegistry implements Registry, DefaultRegistryHandler.Callbac
         }
     }
 
+    public Future<Boolean> startAsync() {
+        prepareAcceptor();
+        Promise<Boolean> promise = new Promise<>();
+        server.bind().addListener((ChannelFuture future) -> {
+            if (!future.isSuccess()) {
+                future.channel().close();
+            }
+            promise.setValue(future.isSuccess());
+        });
+        return promise.getFuture();
+    }
+
     @Override
     public void shutdown() {
         LogUtils.d(TAG, "register shutdown ");
@@ -88,33 +86,73 @@ public class DefaultRegistry implements Registry, DefaultRegistryHandler.Callbac
         loopGroupBoss.shutdownGracefully();
     }
 
-    private void connectionInterrupted(ChannelHandlerContext handler) {
-        // TODO:
-    }
-
-    private List<Host> getProvidersByServiceName(String name) {
-        return services.computeIfAbsent(name, k -> new ArrayList<>());
-    }
-
     public List<Host> requireServiceList(String serviceName) {
-        return getProvidersByServiceName(serviceName);
-    }
-
-    public void register(String serviceName, Host provider) {
-        LogUtils.d(TAG, "register：" + serviceName + " with " + provider.toString());
-        List<Host> providers = getProvidersByServiceName(serviceName);
-        providers.add(provider);
-    }
-
-    public void unregister(String serviceName, Host provider) {
-        LogUtils.d(TAG, "unregister：" + serviceName + " with " + provider.toString());
-        List<Host> providers = getProvidersByServiceName(serviceName);
-        providers.remove(provider);
+        ConcurrentSet<Host> hosts = getProvidersByServiceName(serviceName);
+        return new ArrayList<>(hosts);
     }
 
     @Override
-    public void unregisterAll(Host provider) {
-        LogUtils.d(TAG, "unregister all services with: " + provider.toString());
-        services.forEach((services, hosts) -> hosts.remove(provider));
+    public void register(Host remote, RegisterRequest request) {
+        providers.put(remote, request.getHost());
+        for (String s : request.getServices()) {
+            register(s, request.getHost());
+        }
+    }
+
+    @Override
+    public void unregister(Host remote) {
+        Host host = providers.get(remote);
+        if (host == null)
+            return;
+        LogUtils.d(TAG, "unregister all services" +
+                " of remote:" + host.toString());
+        provideServices.forEach((service, hostSet) -> hostSet.remove(host));
+        providers.remove(remote);
+    }
+
+    private void prepareAcceptor() {
+        LogUtils.d(TAG, "start register at: " + host.toString());
+        server.group(loopGroupBoss, loopGroupWorkers)
+                .localAddress(host.toAddress())
+                .channel(NioServerSocketChannel.class)
+                .option(ChannelOption.SO_BACKLOG, 1024) // 链接队列个数
+                .option(ChannelOption.SO_REUSEADDR, true)
+                .childOption(ChannelOption.TCP_NODELAY, true)
+                .childOption(ChannelOption.SO_KEEPALIVE, false);
+
+        server.childHandler(new ChannelInitializer<SocketChannel>() {
+            @Override
+            public void initChannel(SocketChannel ch) throws Exception {
+                ChannelPipeline pipe = ch.pipeline();
+                pipe.addLast(new IdleStateHandler(10, 0, 0));
+                pipe.addLast(new HeartBeatReceiveTrigger());
+                pipe.addLast(new ConnectionWatchdog(
+                        DefaultRegistry.this::connectionInterrupted));
+                pipe.addLast(new MessageDecoder());
+                pipe.addLast(new MessageEncoder());
+                pipe.addLast(new DefaultRegistryHandler(DefaultRegistry.this));
+                pipe.addLast(new DefaultExceptionCaught());
+            }
+        });
+    }
+
+    private void register(String service, Host host) {
+        LogUtils.d(TAG, "remote:" + host.toString()
+                + " register " + service);
+        ConcurrentSet<Host> hosts = getProvidersByServiceName(service);
+        hosts.add(host);
+    }
+
+    private void connectionInterrupted(ChannelHandlerContext handler) {
+        SocketAddress remoteAddress = handler.channel().remoteAddress();
+        Host remote = Host.factory((InetSocketAddress) remoteAddress);
+        LogUtils.d(TAG, "remote:" + remote + " disconnected");
+
+        unregister(remote);
+    }
+
+    private ConcurrentSet<Host> getProvidersByServiceName(String name) {
+        return provideServices.computeIfAbsent(
+                name, k -> new ConcurrentSet<>());
     }
 }

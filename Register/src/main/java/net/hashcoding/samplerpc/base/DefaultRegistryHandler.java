@@ -3,9 +3,13 @@ package net.hashcoding.samplerpc.base;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.hashcoding.samplerpc.common.entity.Host;
-import net.hashcoding.samplerpc.common.entity.Provider;
 import net.hashcoding.samplerpc.common.message.Command;
+import net.hashcoding.samplerpc.common.message.RegisterRequest;
+import net.hashcoding.samplerpc.common.utils.LogUtils;
 
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -33,7 +37,9 @@ public class DefaultRegistryHandler extends SimpleChannelInboundHandler<Command>
         switch (command.getType()) {
             case Command.GET_SERVER_LIST: {
                 String serviceName = command.factoryFromBody();
-                List<Host> providers = callback.requireServiceList(serviceName);
+                List<Host> providers = callback == null
+                        ? new ArrayList<>()
+                        : callback.requireServiceList(serviceName);
                 Command response = new Command(
                         Command.GET_SERVER_LIST_RESPONSE, providers);
                 response.setRequestId(command.getRequestId());
@@ -42,19 +48,27 @@ public class DefaultRegistryHandler extends SimpleChannelInboundHandler<Command>
             }
 
             case Command.REGISTER_SERVER: {
-                Provider provider = command.factoryFromBody();
-                if (callback != null)
-                    callback.register(provider.getName(), provider.getHost());
+                if (callback != null) {
+                    RegisterRequest request = command.factoryFromBody();
+                    SocketAddress address = context.channel().remoteAddress();
+                    Host remote = Host.factory((InetSocketAddress) address);
+                    callback.register(remote, request);
+                }
                 break;
             }
 
             case Command.UNREGISTER_SERVER: {
-                Provider provider = command.factoryFromBody();
-                if (callback != null)
-                    callback.unregister(provider.getName(), provider.getHost());
+                if (callback != null) {
+                    SocketAddress address = context.channel().remoteAddress();
+                    Host remote = Host.factory((InetSocketAddress) address);
+                    callback.unregister(remote);
+                }
                 break;
             }
+            case Command.HEART_BEAT_REQUEST:
+                LogUtils.d(TAG, "receive heart beat message");
             default:
+                // NOTICE: must be last handle
                 break;
         }
     }
@@ -62,10 +76,8 @@ public class DefaultRegistryHandler extends SimpleChannelInboundHandler<Command>
     public interface Callback {
         List<Host> requireServiceList(String serviceName);
 
-        void register(String serviceName, Host provider);
+        void register(Host remote, RegisterRequest request);
 
-        void unregister(String serviceName, Host provider);
-
-        void unregisterAll(Host provider);
+        void unregister(Host remote);
     }
 }

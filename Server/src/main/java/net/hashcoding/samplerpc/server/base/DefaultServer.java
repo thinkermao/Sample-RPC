@@ -9,11 +9,11 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
 import net.hashcoding.samplerpc.common.entity.Host;
-import net.hashcoding.samplerpc.common.entity.Provider;
 import net.hashcoding.samplerpc.common.handle.*;
 import net.hashcoding.samplerpc.common.message.Command;
-import net.hashcoding.samplerpc.common.message.Request;
-import net.hashcoding.samplerpc.common.message.Response;
+import net.hashcoding.samplerpc.common.message.InvokeRequest;
+import net.hashcoding.samplerpc.common.message.InvokeResponse;
+import net.hashcoding.samplerpc.common.message.RegisterRequest;
 import net.hashcoding.samplerpc.common.utils.ConditionUtils;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 import net.hashcoding.samplerpc.common.utils.ReflectUtils;
@@ -60,81 +60,85 @@ public class DefaultServer implements Server {
 
     @Override
     public void start() {
-        listen();
-        pendingConnectToRegister();
+        setupServiceProvider();
+        setupRegisterClient();
     }
 
-    private void listen() {
+    private void setupServiceProvider() {
         LogUtils.d(TAG, "Begin listen invoke request: " + local.toString());
         server.group(loopGroupBoss, loopGroupWorkers)
                 .channel(NioServerSocketChannel.class)
+                .localAddress(local.toAddress())
                 .option(ChannelOption.SO_BACKLOG, 1024) // 链接队列个数
                 .option(ChannelOption.SO_REUSEADDR, true)
                 .childOption(ChannelOption.SO_KEEPALIVE, false) //设置心跳参数 FALSE为不启用参数
-                .childOption(ChannelOption.TCP_NODELAY, true)
-                .localAddress(local.toAddress())
-                .childHandler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    protected void initChannel(SocketChannel channel) throws Exception {
-                        ChannelPipeline pipe = channel.pipeline();
-                        pipe.addLast(new IdleStateHandler(6, 0, 0));
-                        pipe.addLast(new HeartBeatReceiveTrigger());
-                        pipe.addLast(new MessageDecoder());
-                        pipe.addLast(new MessageEncoder());
-                        pipe.addLast(new DefaultServerHandler(
-                                DefaultServer.this::handleInvokeRequest));
-                        pipe.addLast(new DefaultExceptionCaught());
-                    }
-                });
+                .childOption(ChannelOption.TCP_NODELAY, true);
+        server.childHandler(new ChannelInitializer<SocketChannel>() {
+            @Override
+            protected void initChannel(SocketChannel channel) throws Exception {
+                ChannelPipeline pipe = channel.pipeline();
+                pipe.addLast(new IdleStateHandler(10, 0, 0));
+                pipe.addLast(new HeartBeatReceiveTrigger());
+                pipe.addLast(new ConnectionWatchdog(/* ignore */));
+                pipe.addLast(new MessageDecoder());
+                pipe.addLast(new MessageEncoder());
+                pipe.addLast(new DefaultServerHandler(
+                        DefaultServer.this::handleInvokeRequest));
+                pipe.addLast(new DefaultExceptionCaught());
+            }
+        });
 
         try {
             server.bind().sync();
-        } catch (InterruptedException e1) {
+        } catch (InterruptedException e) {
             throw new RuntimeException("server.bind() " +
-                    "InterruptedException", e1);
+                    "InterruptedException", e);
         }
     }
 
-    private void pendingConnectToRegister() {
+    private void setupRegisterClient() {
         register.group(new NioEventLoopGroup(1))
                 .channel(NioSocketChannel.class)
+                .remoteAddress(remote.toAddress())
                 .option(ChannelOption.TCP_NODELAY, true)
-                .option(ChannelOption.SO_KEEPALIVE, false) //设置心跳参数 FALSE为不启用参数
-                .handler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    protected void initChannel(SocketChannel channel) throws Exception {
-                        ChannelPipeline pipe = channel.pipeline();
-                        pipe.addLast(new IdleStateHandler(0, 5, 0));
-                        pipe.addLast(new HeartBeatSendTrigger());
-                        pipe.addLast(new ConnectionWatchdog(handler -> DefaultServer.this.reconnect(handler)));
-                        pipe.addLast(new MessageEncoder());
-                        pipe.addLast(new MessageDecoder());
-                    }
-                });
+                .option(ChannelOption.SO_KEEPALIVE, false); //设置心跳参数 FALSE为不启用参数
+        register.handler(new ChannelInitializer<SocketChannel>() {
+            @Override
+            protected void initChannel(SocketChannel channel) throws Exception {
+                ChannelPipeline pipe = channel.pipeline();
+                pipe.addLast(new IdleStateHandler(0, 5, 0));
+                pipe.addLast(new HeartBeatSendTrigger());
+                pipe.addLast(new ConnectionWatchdog(
+                        DefaultServer.this::reconnect));
+                pipe.addLast(new MessageEncoder());
+                pipe.addLast(new MessageDecoder());
+                pipe.addLast(new DefaultExceptionCaught());
+            }
+        });
         doConnect();
     }
 
     private void doSuccess(Channel channel) {
         LogUtils.d(TAG, "Registry self to register");
         Enumeration<String> keys = services.keys();
+        RegisterRequest request = new RegisterRequest();
+        List<String> waitForRegister = new ArrayList<>();
         while (keys.hasMoreElements()) {
-            Provider provider = new Provider();
-            provider.setName(keys.nextElement());
-            provider.setHost(local);
-            Command command = new Command(Command.REGISTER_SERVER, provider);
-            channel.write(command);
+            waitForRegister.add(keys.nextElement());
         }
-        channel.flush();
+        request.setServices(waitForRegister);
+        request.setHost(local);
+        channel.writeAndFlush(new Command(Command.REGISTER_SERVER, request));
     }
 
-    private void reconnect(ChannelHandler handler) {
+    private void reconnect(ChannelHandlerContext handler) {
         doConnect();
     }
 
     private void doConnect() {
         LogUtils.d(TAG, "Try connect register");
         try {
-            ChannelFuture channelFuture = register.connect(remote.toAddress());
+            ChannelFuture channelFuture = register.connect();
             channelFuture.addListener((ChannelFuture f) -> {
                 if (f.isSuccess()) {
                     doSuccess(f.channel());
@@ -152,8 +156,8 @@ public class DefaultServer implements Server {
     // todo: any better solution ?
     private void handleInvokeRequest(
             ChannelHandlerContext context, Command command) {
-        Request invoke = command.factoryFromBody();
-        Response response = new Response();
+        InvokeRequest invoke = command.factoryFromBody();
+        InvokeResponse response = new InvokeResponse();
         Command result = new Command(Command.INVOKE_RESPONSE, null);
         result.setRequestId(command.getRequestId());
 

@@ -2,7 +2,7 @@ package net.hashcoding.samplerpc.client.base;
 
 import net.hashcoding.samplerpc.client.Client;
 import net.hashcoding.samplerpc.client.Proxy;
-import net.hashcoding.samplerpc.common.message.Response;
+import net.hashcoding.samplerpc.common.message.InvokeResponse;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
@@ -77,7 +77,7 @@ public class CGLibProxy implements Proxy {
             if (toStringMethod.equals(method)) {
                 return proxyToString(proxy);
             }
-            Response response = client.sendMessage(serviceInterface, method, args);
+            InvokeResponse response = client.sendMessage(serviceInterface, method, args);
             Object result = response.getResponse();
             if (result == null) {
                 throw new RuntimeException(response.getThrowReason());

@@ -18,12 +18,16 @@ public class HeartBeatSendTrigger extends ChannelInboundHandlerAdapter {
         if (evt instanceof IdleStateEvent) {
             IdleState state = ((IdleStateEvent) evt).state();
             if (state == IdleState.WRITER_IDLE) {
-                // write heartbeat to server
-                LogUtils.t(TAG, "Send heart beat request to server");
-                ctx.writeAndFlush(Command.heartBeatRequest());
+                sendHeartBeatMessage(ctx);
             }
         } else {
             super.userEventTriggered(ctx, evt);
         }
+    }
+
+    private void sendHeartBeatMessage(ChannelHandlerContext context) {
+        // write heartbeat to server
+        LogUtils.t(TAG, "Send heart beat request to server");
+        context.channel().writeAndFlush(Command.heartBeatRequest());
     }
 }

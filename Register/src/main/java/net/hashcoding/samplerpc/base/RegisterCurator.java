@@ -5,10 +5,10 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.timeout.IdleStateHandler;
 import net.hashcoding.samplerpc.RegistryClient;
 import net.hashcoding.samplerpc.common.entity.Host;
-import net.hashcoding.samplerpc.common.handle.MessageDecoder;
-import net.hashcoding.samplerpc.common.handle.MessageEncoder;
+import net.hashcoding.samplerpc.common.handle.*;
 import net.hashcoding.samplerpc.common.message.Command;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Created by MaoChuan on 2017/5/13.
  */
-public class RegisterCurator implements RegistryClient, RegisterCuratorHandler.Callback {
+public class RegisterCurator implements RegistryClient {
     private static final String TAG = "RegisterCurator";
 
     private final Bootstrap register;
@@ -83,10 +83,15 @@ public class RegisterCurator implements RegistryClient, RegisterCuratorHandler.C
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline pipe = ch.pipeline();
-                        //pipe.addLast(new IdleStateHandler(0, 0, 60));
+                        pipe.addLast(new IdleStateHandler(0, 5, 0));
+                        pipe.addLast(new HeartBeatSendTrigger());
+                        pipe.addLast(new ConnectionWatchdog(
+                                RegisterCurator.this::inactive));
                         pipe.addLast(new MessageDecoder());
                         pipe.addLast(new MessageEncoder());
-                        pipe.addLast(new RegisterCuratorHandler(RegisterCurator.this));
+                        pipe.addLast(new RegisterCuratorHandler(
+                                RegisterCurator.this::serviceResponse));
+                        pipe.addLast(new DefaultExceptionCaught());
                     }
                 });
 
@@ -141,13 +146,13 @@ public class RegisterCurator implements RegistryClient, RegisterCuratorHandler.C
         loopGroup.shutdownGracefully();
     }
 
-    public void inactive(Channel channel) {
+    public void inactive(ChannelHandlerContext channel) {
         LogUtils.d(TAG, "connect close, try connect to after 1 second");
-        channel.eventLoop().schedule(this::doConnect, 1, TimeUnit.SECONDS);
+        channel.channel().eventLoop()
+                .schedule(this::doConnect, 1, TimeUnit.SECONDS);
     }
 
-    @Override
-    public void serviceResponse(long requestId, List<Host> hosts) {
+    private void serviceResponse(long requestId, List<Host> hosts) {
         String name = requireServices.get(requestId);
         if (name == null)
             return;

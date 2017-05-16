@@ -1,6 +1,6 @@
 package net.hashcoding.samplerpc.client;
 
-import net.hashcoding.samplerpc.common.message.Response;
+import net.hashcoding.samplerpc.common.message.InvokeResponse;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.Future;
@@ -11,7 +11,7 @@ import java.util.concurrent.Future;
 public interface Client {
     Future<Boolean> addTargetService(Class<?> clazz);
 
-    Response sendMessage(Class<?> clazz, Method method, Object[] args);
+    InvokeResponse sendMessage(Class<?> clazz, Method method, Object[] args);
 
     <T> T getInterface(Class<T> clazz);
 

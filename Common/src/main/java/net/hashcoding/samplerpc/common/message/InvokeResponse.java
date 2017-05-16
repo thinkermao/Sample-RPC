@@ -3,12 +3,12 @@ package net.hashcoding.samplerpc.common.message;
 /**
  * Created by MaoChuan on 2017/5/13.
  */
-public class Response {
+public class InvokeResponse {
 
     private Object response;
     private String throwReason;
 
-    public Response() {
+    public InvokeResponse() {
     }
 
     public Object getResponse() {

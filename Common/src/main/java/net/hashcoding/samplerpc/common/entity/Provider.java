@@ -26,4 +26,9 @@ public class Provider {
         this.host = host;
     }
 
+    @Override
+    public String toString() {
+        return "Provider { Service name: " + name +
+                ", " + host.toString() + "}";
+    }
 }

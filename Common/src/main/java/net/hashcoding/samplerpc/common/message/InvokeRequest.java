@@ -6,7 +6,7 @@ package net.hashcoding.samplerpc.common.message;
 
 import java.io.Serializable;
 
-public class Request implements Serializable {
+public class InvokeRequest implements Serializable {
     private String interfaceName;
     private String methodName;
     private String[] parameterTypes;
@@ -14,13 +14,13 @@ public class Request implements Serializable {
     private boolean extData;
     private Object extObject;
 
-//    public static Request factory(Command command) {
+//    public static InvokeRequest factory(Command command) {
 //        ConditionUtils.checkNotNull(command.getBody());
 //        return factory(command.getBody());
 //    }
 //
-//    public static Request factory(byte [] bytes) {
-//        return JSON.parseObject(bytes, Request.class);
+//    public static InvokeRequest factory(byte [] bytes) {
+//        return JSON.parseObject(bytes, InvokeRequest.class);
 //    }
 //
 //    public byte[] toBytes() {
