@@ -1,4 +1,4 @@
-package net.hashcoding.samplerpc.common;
+package net.hashcoding.samplerpc.common.message;
 
 /**
  * Created by MaoChuan on 2017/5/13.

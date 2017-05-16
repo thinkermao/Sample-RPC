@@ -1,7 +1,7 @@
 package net.hashcoding.samplerpc.client;
 
 import net.hashcoding.samplerpc.common.Promise;
-import net.hashcoding.samplerpc.common.Response;
+import net.hashcoding.samplerpc.common.message.Response;
 
 import java.util.concurrent.ConcurrentHashMap;
 

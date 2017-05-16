@@ -3,9 +3,9 @@ package net.hashcoding.samplerpc.client.base;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import net.hashcoding.samplerpc.client.ResponseMapHelper;
-import net.hashcoding.samplerpc.common.Command;
 import net.hashcoding.samplerpc.common.Promise;
-import net.hashcoding.samplerpc.common.Response;
+import net.hashcoding.samplerpc.common.message.Command;
+import net.hashcoding.samplerpc.common.message.Response;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
 /**

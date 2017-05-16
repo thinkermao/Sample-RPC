@@ -1,7 +1,7 @@
 package net.hashcoding.samplerpc.client.base;
 
 import io.netty.channel.Channel;
-import net.hashcoding.samplerpc.common.Host;
+import net.hashcoding.samplerpc.common.entity.Host;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 

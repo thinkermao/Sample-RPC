@@ -6,10 +6,10 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import net.hashcoding.samplerpc.RegistryClient;
-import net.hashcoding.samplerpc.common.Command;
-import net.hashcoding.samplerpc.common.Host;
+import net.hashcoding.samplerpc.common.entity.Host;
 import net.hashcoding.samplerpc.common.handle.MessageDecoder;
 import net.hashcoding.samplerpc.common.handle.MessageEncoder;
+import net.hashcoding.samplerpc.common.message.Command;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
 import java.util.ArrayList;

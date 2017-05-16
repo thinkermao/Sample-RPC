@@ -1,4 +1,4 @@
-package net.hashcoding.samplerpc.common;
+package net.hashcoding.samplerpc.common.message;
 
 import net.hashcoding.samplerpc.common.utils.ConditionUtils;
 import net.hashcoding.samplerpc.common.utils.SerializeUtils;
@@ -71,12 +71,12 @@ public class Command {
         return body;
     }
 
-    public void setBody(Object o) {
-        this.body = SerializeUtils.serialize(o);
-    }
-
     public void setBody(byte[] body) {
         this.body = body;
+    }
+
+    public void setBody(Object o) {
+        this.body = SerializeUtils.serialize(o);
     }
 
     public <T> T factoryFromBody() {

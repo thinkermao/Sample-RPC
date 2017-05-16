@@ -5,7 +5,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
 import net.hashcoding.samplerpc.common.ChannelHandlerCallback;
-import net.hashcoding.samplerpc.common.Host;
+import net.hashcoding.samplerpc.common.entity.Host;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
 import java.net.InetSocketAddress;

@@ -5,7 +5,7 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
-import net.hashcoding.samplerpc.common.Host;
+import net.hashcoding.samplerpc.common.entity.Host;
 import net.hashcoding.samplerpc.common.handle.*;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 import org.apache.commons.pool2.BasePooledObjectFactory;

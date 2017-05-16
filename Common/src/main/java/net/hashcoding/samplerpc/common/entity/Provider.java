@@ -1,4 +1,4 @@
-package net.hashcoding.samplerpc.common;
+package net.hashcoding.samplerpc.common.entity;
 
 /**
  * Created by MaoChuan on 2017/5/13.
@@ -26,11 +26,4 @@ public class Provider {
         this.host = host;
     }
 
-//    public static Provider factory(byte [] bytes) {
-//        return JSON.parseObject(bytes, Provider.class);
-//    }
-//
-//    public byte [] toBytes() {
-//        return JSON.toJSONBytes(this);
-//    }
 }

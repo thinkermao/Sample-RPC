@@ -1,6 +1,6 @@
 package net.hashcoding.samplerpc;
 
-import net.hashcoding.samplerpc.common.Host;
+import net.hashcoding.samplerpc.common.entity.Host;
 
 import java.util.List;
 

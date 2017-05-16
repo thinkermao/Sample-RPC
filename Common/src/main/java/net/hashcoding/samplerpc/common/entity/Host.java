@@ -1,4 +1,4 @@
-package net.hashcoding.samplerpc.common;
+package net.hashcoding.samplerpc.common.entity;
 
 import java.net.InetSocketAddress;
 
@@ -18,25 +18,6 @@ public class Host {
         this.ip = ip;
         this.port = port;
     }
-
-//    public static List<Host> factoryArray(byte [] bytes) {
-//        String data = null;
-//        try {
-//            data = new String(bytes, "UTF-8");
-//        } catch (UnsupportedEncodingException e) {
-//            e.printStackTrace();
-//            // TODO:
-//        }
-//        return JSON.parseArray(data, Host.class);
-//    }
-
-//    public static String toJsonString(List<Host> hosts) {
-//        return JSON.toJSONString(hosts);
-//    }
-//
-//    public static byte [] toJsonBytes(List<Host> hosts) {
-//        return JSON.toJSONBytes(hosts);
-//    }
 
     public static Host factory(InetSocketAddress address) {
         return new Host(address.getHostString(), address.getPort());

@@ -4,7 +4,7 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.timeout.IdleState;
 import io.netty.handler.timeout.IdleStateEvent;
-import net.hashcoding.samplerpc.common.Command;
+import net.hashcoding.samplerpc.common.message.Command;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
 /**

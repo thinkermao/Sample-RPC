@@ -7,7 +7,7 @@ import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
 import net.hashcoding.samplerpc.Registry;
-import net.hashcoding.samplerpc.common.Host;
+import net.hashcoding.samplerpc.common.entity.Host;
 import net.hashcoding.samplerpc.common.handle.ConnectionWatchdog;
 import net.hashcoding.samplerpc.common.handle.HeartBeatReceiveTrigger;
 import net.hashcoding.samplerpc.common.handle.MessageDecoder;

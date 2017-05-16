@@ -2,7 +2,7 @@ package net.hashcoding.samplerpc.client.base;
 
 import net.hashcoding.samplerpc.client.Client;
 import net.hashcoding.samplerpc.client.Proxy;
-import net.hashcoding.samplerpc.common.Response;
+import net.hashcoding.samplerpc.common.message.Response;
 import net.sf.cglib.proxy.Enhancer;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;

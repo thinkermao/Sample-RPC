@@ -2,9 +2,9 @@ package net.hashcoding.samplerpc.base;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import net.hashcoding.samplerpc.common.Command;
-import net.hashcoding.samplerpc.common.Host;
-import net.hashcoding.samplerpc.common.Provider;
+import net.hashcoding.samplerpc.common.entity.Host;
+import net.hashcoding.samplerpc.common.entity.Provider;
+import net.hashcoding.samplerpc.common.message.Command;
 
 import java.util.List;
 

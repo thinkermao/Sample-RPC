@@ -1,6 +1,6 @@
 package net.hashcoding.samplerpc.client;
 
-import net.hashcoding.samplerpc.common.Response;
+import net.hashcoding.samplerpc.common.message.Response;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.Future;

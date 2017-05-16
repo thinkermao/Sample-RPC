@@ -3,7 +3,7 @@ package net.hashcoding.samplerpc.common.handle;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToByteEncoder;
-import net.hashcoding.samplerpc.common.Command;
+import net.hashcoding.samplerpc.common.message.Command;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
 /**
