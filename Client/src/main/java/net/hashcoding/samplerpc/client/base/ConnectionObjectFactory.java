@@ -6,8 +6,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
 import net.hashcoding.samplerpc.common.Host;
-import net.hashcoding.samplerpc.common.MessageDecoder;
-import net.hashcoding.samplerpc.common.MessageEncoder;
+import net.hashcoding.samplerpc.common.handle.*;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.PooledObject;
@@ -35,10 +34,13 @@ public class ConnectionObjectFactory extends BasePooledObjectFactory<Channel> {
                 .handler(new ChannelInitializer<Channel>() {
                     protected void initChannel(Channel ch) throws Exception {
                         ChannelPipeline pipe = ch.pipeline();
-                        pipe.addLast(new IdleStateHandler(0, 0, 60));
+                        pipe.addLast(new IdleStateHandler(0, 5, 0));
+                        pipe.addLast(new HeartBeatSendTrigger());
+                        pipe.addLast(new ConnectionWatchdog());
                         pipe.addLast(new MessageEncoder());
                         pipe.addLast(new MessageDecoder());
                         pipe.addLast(new DefaultClientHandler());
+                        pipe.addLast(new DefaultExceptionCaught());
                     }
                 });
         try {

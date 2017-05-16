@@ -13,12 +13,9 @@ public class DefaultServerHandler
     private static final String TAG = "DefaultServerHandler";
 
     private InvokeCallback callback;
-    private SplitMessageCallback splitMessageCallback;
 
-    public DefaultServerHandler(InvokeCallback callback,
-                                SplitMessageCallback splitMessageCallback) {
+    public DefaultServerHandler(InvokeCallback callback) {
         this.callback = callback;
-        this.splitMessageCallback = splitMessageCallback;
     }
 
     @Override
@@ -30,33 +27,13 @@ public class DefaultServerHandler
                 callback.call(handlerContext, command);
                 break;
 
-            case Command.SPLIT_MESSAGE:
-                LogUtils.d(TAG, "received split message");
-                splitMessageCallback.call(handlerContext, command, false);
-                break;
-
-            case Command.SPLIT_MESSAGE_DONE:
-                splitMessageCallback.call(handlerContext, command, true);
-                break;
-
             default:
+                // Notice: last handler
                 break;
         }
     }
 
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        //ctx.fireExceptionCaught(cause);
-
-        LogUtils.d(TAG, cause);
-        ctx.close();
-    }
-
     public interface InvokeCallback {
         void call(ChannelHandlerContext context, Command command);
-    }
-
-    public interface SplitMessageCallback {
-        void call(ChannelHandlerContext context, Command command, boolean last);
     }
 }

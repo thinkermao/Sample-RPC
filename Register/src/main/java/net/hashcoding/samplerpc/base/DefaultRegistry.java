@@ -8,8 +8,10 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
 import net.hashcoding.samplerpc.Registry;
 import net.hashcoding.samplerpc.common.Host;
-import net.hashcoding.samplerpc.common.MessageDecoder;
-import net.hashcoding.samplerpc.common.MessageEncoder;
+import net.hashcoding.samplerpc.common.handle.ConnectionWatchdog;
+import net.hashcoding.samplerpc.common.handle.HeartBeatReceiveTrigger;
+import net.hashcoding.samplerpc.common.handle.MessageDecoder;
+import net.hashcoding.samplerpc.common.handle.MessageEncoder;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 
 import java.util.ArrayList;
@@ -57,7 +59,11 @@ public class DefaultRegistry implements Registry, DefaultRegistryHandler.Callbac
                     @Override
                     public void initChannel(SocketChannel ch) throws Exception {
                         ChannelPipeline pipe = ch.pipeline();
-                        pipe.addLast(new IdleStateHandler(10, 6, 5));
+                        pipe.addLast(new IdleStateHandler(6, 0, 0));
+                        pipe.addLast(new HeartBeatReceiveTrigger(
+                                DefaultRegistry.this::connectionInterrupted));
+                        pipe.addLast(new ConnectionWatchdog(
+                                DefaultRegistry.this::connectionInterrupted));
                         pipe.addLast(new MessageDecoder());
                         pipe.addLast(new MessageEncoder());
                         pipe.addLast(new DefaultRegistryHandler(DefaultRegistry.this));
@@ -82,6 +88,9 @@ public class DefaultRegistry implements Registry, DefaultRegistryHandler.Callbac
         loopGroupBoss.shutdownGracefully();
     }
 
+    private void connectionInterrupted(ChannelHandler handler) {
+        // TODO:
+    }
 
     private List<Host> getProvidersByServiceName(String name) {
         return services.computeIfAbsent(name, k -> new ArrayList<>());

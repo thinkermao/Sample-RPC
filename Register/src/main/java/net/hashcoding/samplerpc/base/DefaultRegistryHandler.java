@@ -2,14 +2,10 @@ package net.hashcoding.samplerpc.base;
 
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.timeout.IdleState;
-import io.netty.handler.timeout.IdleStateEvent;
 import net.hashcoding.samplerpc.common.Command;
 import net.hashcoding.samplerpc.common.Host;
 import net.hashcoding.samplerpc.common.Provider;
-import net.hashcoding.samplerpc.common.utils.LogUtils;
 
-import java.net.InetSocketAddress;
 import java.util.List;
 
 /**
@@ -61,53 +57,6 @@ public class DefaultRegistryHandler extends SimpleChannelInboundHandler<Command>
             default:
                 break;
         }
-    }
-
-    @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt)
-            throws Exception {
-        LogUtils.t(TAG, evt.toString());
-        if (evt instanceof IdleStateEvent) {
-            IdleStateEvent event = (IdleStateEvent) evt;
-            if (event.state() == IdleState.READER_IDLE) {
-                Host host = Host.factory((InetSocketAddress) ctx.channel().remoteAddress());
-                LogUtils.t(TAG, "host will be close " + host.toString());
-                if (callback != null) {
-                    callback.unregisterAll(host);
-                }
-                ctx.close();
-            } else if (event.state().equals(IdleState.WRITER_IDLE)) {
-                LogUtils.t(TAG, "write idle ");
-            } else if (event.state().equals(IdleState.ALL_IDLE)) {
-                Host host = Host.factory((InetSocketAddress) ctx.channel().remoteAddress());
-                LogUtils.t(TAG, "send heart beat to request " + host.toString());
-                Command command = new Command(Command.HEART_BEAT_REQUEST, null);
-                ctx.channel().writeAndFlush(command);
-            } else {
-                LogUtils.t(TAG, "what the fuck?");
-            }
-        }
-    }
-
-    @Override
-    public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-        super.channelInactive(ctx);
-
-        if (callback != null) {
-            Host host = Host.factory((InetSocketAddress) ctx.channel().remoteAddress());
-            callback.unregisterAll(host);
-        }
-        ctx.close();
-    }
-
-    @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        LogUtils.e(TAG, cause);
-//        if (callback != null) {
-//            Host host = Host.factory((InetSocketAddress) ctx.channel().remoteAddress());
-//            callback.unregisterAll(host);
-//        }
-        ctx.close();
     }
 
     public interface Callback {

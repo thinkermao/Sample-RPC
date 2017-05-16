@@ -7,7 +7,9 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.timeout.IdleStateHandler;
 import net.hashcoding.samplerpc.common.*;
+import net.hashcoding.samplerpc.common.handle.*;
 import net.hashcoding.samplerpc.common.utils.ConditionUtils;
 import net.hashcoding.samplerpc.common.utils.LogUtils;
 import net.hashcoding.samplerpc.common.utils.ReflectUtils;
@@ -34,18 +36,13 @@ public class DefaultServer implements Server {
 
     private final Host remote;
     private final Host local;
-    private final SplitMessageComeListener listener;
     private final ConcurrentHashMap<String, Object> services;
-    private final ConcurrentHashMap<Long, SplitMessageCallback> messageCallback;
 
     private DefaultServer(Host remote, Host local,
-                          ConcurrentHashMap<String, Object> services,
-                          SplitMessageComeListener listener) {
+                          ConcurrentHashMap<String, Object> services) {
         this.remote = remote;
         this.local = local;
         this.services = services;
-        this.listener = listener;
-        this.messageCallback = new ConcurrentHashMap<>();
 
         register = new Bootstrap();
         server = new ServerBootstrap();
@@ -63,12 +60,6 @@ public class DefaultServer implements Server {
         pendingConnectToRegister();
     }
 
-    public void registerSplitMessageCallback(
-            Command command, SplitMessageCallback callback) {
-        Long requestId = command.getRequestId();
-        messageCallback.put(requestId, callback);
-    }
-
     private void listen() {
         LogUtils.d(TAG, "Begin listen invoke request: " + local.toString());
         server.group(loopGroupBoss, loopGroupWorkers)
@@ -82,11 +73,13 @@ public class DefaultServer implements Server {
                     @Override
                     protected void initChannel(SocketChannel channel) throws Exception {
                         ChannelPipeline pipe = channel.pipeline();
+                        pipe.addLast(new IdleStateHandler(6, 0, 0));
+                        pipe.addLast(new HeartBeatReceiveTrigger());
                         pipe.addLast(new MessageDecoder());
                         pipe.addLast(new MessageEncoder());
                         pipe.addLast(new DefaultServerHandler(
-                                DefaultServer.this::handleInvokeRequest,
-                                DefaultServer.this::handleSplitMessage));
+                                DefaultServer.this::handleInvokeRequest));
+                        pipe.addLast(new DefaultExceptionCaught());
                     }
                 });
 
@@ -107,9 +100,11 @@ public class DefaultServer implements Server {
                     @Override
                     protected void initChannel(SocketChannel channel) throws Exception {
                         ChannelPipeline pipe = channel.pipeline();
+                        pipe.addLast(new IdleStateHandler(0, 5, 0));
+                        pipe.addLast(new HeartBeatSendTrigger());
+                        pipe.addLast(new ConnectionWatchdog(DefaultServer.this::reconnect));
                         pipe.addLast(new MessageEncoder());
                         pipe.addLast(new MessageDecoder());
-                        pipe.addLast(new DefaultServerRegisterHandler(DefaultServer.this::doConnect));
                     }
                 });
         doConnect();
@@ -126,6 +121,10 @@ public class DefaultServer implements Server {
             channel.write(command);
         }
         channel.flush();
+    }
+
+    private void reconnect(ChannelHandler handler) {
+        doConnect();
     }
 
     private void doConnect() {
@@ -146,15 +145,10 @@ public class DefaultServer implements Server {
         }
     }
 
-    private void handleInvokeRequestWithExtData(
-            ChannelHandlerContext context, Command command, Request request) {
-        if (listener != null) {
-            listener.call(context, command, request);
-        }
-    }
-
-    private void handleInvokeRequestWithoutExtData(
-            ChannelHandlerContext context, Command command, Request invoke) {
+    // todo: any better solution ?
+    private void handleInvokeRequest(
+            ChannelHandlerContext context, Command command) {
+        Request invoke = command.factoryFromBody();
         Response response = new Response();
         Command result = new Command(Command.INVOKE_RESPONSE, null);
         result.setRequestId(command.getRequestId());
@@ -191,32 +185,6 @@ public class DefaultServer implements Server {
         }
     }
 
-    // todo: any better solution ?
-    private void handleInvokeRequest(
-            ChannelHandlerContext context, Command command) {
-        Request invoke = command.factoryFromBody();
-
-        if (invoke.isExtData()) {
-            handleInvokeRequestWithExtData(context, command, invoke);
-        } else {
-            handleInvokeRequestWithoutExtData(context, command, invoke);
-        }
-    }
-
-    private void handleSplitMessage(
-            ChannelHandlerContext context, Command command, boolean last) {
-        Long requestId = command.getRequestId();
-        SplitMessageCallback callback = messageCallback.get(requestId);
-        if (callback == null)
-            return;
-        if (!last)
-            callback.received(context, command);
-        else {
-            messageCallback.remove(requestId);
-            callback.done(context, command);
-        }
-    }
-
     @Override
     public void shutdown() {
         LogUtils.d(TAG, "server shutdown ");
@@ -224,22 +192,11 @@ public class DefaultServer implements Server {
         loopGroupBoss.shutdownGracefully();
     }
 
-    public interface SplitMessageComeListener {
-        void call(ChannelHandlerContext context, Command command, Request request);
-    }
-
-    public interface SplitMessageCallback {
-        void received(ChannelHandlerContext context, Command command);
-
-        void done(ChannelHandlerContext context, Command command);
-    }
-
     public static class Build {
         private Host remote;
         private Host local;
         private ConcurrentHashMap<String, Object> services =
                 new ConcurrentHashMap<>();
-        private SplitMessageComeListener listener;
 
         public Build() {
         }
@@ -268,20 +225,11 @@ public class DefaultServer implements Server {
             return this;
         }
 
-        public SplitMessageComeListener getListener() {
-            return listener;
-        }
-
-        public Build setListener(SplitMessageComeListener listener) {
-            this.listener = listener;
-            return this;
-        }
-
         public DefaultServer build() {
             ConditionUtils.checkNotNull(remote);
             ConditionUtils.checkNotNull(local);
 
-            return new DefaultServer(remote, local, services, listener);
+            return new DefaultServer(remote, local, services);
         }
     }
 }
