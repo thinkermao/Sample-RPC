@@ -2,6 +2,7 @@ package net.hashcoding.samplerpc.client.base;
 
 import io.netty.channel.Channel;
 import net.hashcoding.samplerpc.common.entity.Host;
+import net.hashcoding.samplerpc.common.utils.ConditionUtils;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 
@@ -11,14 +12,12 @@ import org.apache.commons.pool2.impl.GenericObjectPool;
  */
 public class ChannelConf {
     private Host remote;
-    private String connStr;
     private Channel channel;
     private ObjectPool<Channel> channelObjectPool;
 
     public ChannelConf(Host remote) {
         this.remote = remote;
-        this.connStr = remote.getIp() + ":" + remote.getPort();
-        channelObjectPool = new GenericObjectPool<Channel>(
+        channelObjectPool = new GenericObjectPool<>(
                 new ConnectionObjectFactory(remote));
     }
 
@@ -26,8 +25,16 @@ public class ChannelConf {
         return remote;
     }
 
-    public ObjectPool<Channel> getObjectPool() {
-        return channelObjectPool;
+    public Channel borrow() throws Exception {
+        ConditionUtils.checkArgument(this.channel == null);
+        channel = channelObjectPool.borrowObject();
+        return channel;
+    }
+
+    public void restore(Channel channel) throws Exception {
+        ConditionUtils.checkArgument(channel == this.channel);
+        this.channel = null;
+        channelObjectPool.returnObject(channel);
     }
 
     public void close() {
@@ -36,11 +43,8 @@ public class ChannelConf {
 
     @Override
     public String toString() {
-        final StringBuilder sb = new StringBuilder("ChannelConf{");
-        sb.append("connStr='").append(connStr).append('\'');
-        sb.append(", channel=").append(channel);
-        sb.append(", channelObjectPool=").append(channelObjectPool);
-        sb.append('}');
-        return sb.toString();
+        return "ChannelConf{" + remote.toString() +
+                ", channelObjectPool=" + channelObjectPool +
+                '}';
     }
 }

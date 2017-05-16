@@ -21,14 +21,10 @@ import java.util.concurrent.*;
  * Created by MaoChuan on 2017/5/13.
  */
 public class DefaultClient implements Client {
-
     private static final String TAG = "DefaultClient";
-
-    private final Class<? extends Proxy> proxyClass;
-
     private final Host remote;
-
     private final RegisterCurator curator;
+    private final Class<? extends Proxy> proxyClass;
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<ChannelConf>> services;
     private final ConcurrentHashMap<String, Promise<Boolean>> isServiceAvailable;
     private long requestTimeoutMillis;
@@ -37,7 +33,8 @@ public class DefaultClient implements Client {
         this(remote, requestTimeoutMillis, CGLibProxy.class);
     }
 
-    public DefaultClient(Host remote, long requestTimeoutMilli, Class<? extends Proxy> proxyClass) {
+    public DefaultClient(Host remote, long requestTimeoutMilli,
+                         Class<? extends Proxy> proxyClass) {
         this.remote = remote;
         this.proxyClass = proxyClass;
         this.requestTimeoutMillis = requestTimeoutMilli;
@@ -50,7 +47,8 @@ public class DefaultClient implements Client {
     }
 
     public Future<Boolean> start(int timeout) {
-        LogUtils.d(TAG, "start client, connect to: " + remote.toString());
+        LogUtils.d(TAG, "start client, connect to: "
+                + remote.toString());
         Promise<Boolean> promise = new Promise<>();
         curator.start(timeout, promise::setValue);
         return promise.getFuture();
@@ -100,7 +98,7 @@ public class DefaultClient implements Client {
 
         Channel channel = null;
         try {
-            channel = channelWrapper.getObjectPool().borrowObject();
+            channel = channelWrapper.borrow();
         } catch (Exception e) {
             LogUtils.e(TAG, e);
         }
@@ -111,23 +109,24 @@ public class DefaultClient implements Client {
         }
 
         Command command = new Command(Command.INVOKE_REQUEST, invoke);
-        Channel finalChannel = channel;
 
         Promise<InvokeResponse> promise = new Promise<>();
 
         ResponseMapHelper.responses.put(command.getRequestId(), promise);
 
         channel.writeAndFlush(command);
+
         Future<InvokeResponse> future = promise.getFuture();
         try {
             return future.get(requestTimeoutMillis, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        } catch (InterruptedException | ExecutionException
+                | TimeoutException e) {
             InvokeResponse response = new InvokeResponse();
             response.setThrowReason("require timeout");
             return response;
         } finally {
             try {
-                channelWrapper.getObjectPool().returnObject(finalChannel);
+                channelWrapper.restore(channel);
             } catch (Exception e) {
                 LogUtils.e(TAG, e);
             }
@@ -141,7 +140,6 @@ public class DefaultClient implements Client {
             return proxy.getInterface(this, serviceInterface);
         } catch (InstantiationException | IllegalAccessException e) {
             LogUtils.e(TAG, e);
-            // e.printStackTrace();
         }
         return null;
     }

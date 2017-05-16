@@ -45,13 +45,16 @@ public class ConnectionObjectFactory extends BasePooledObjectFactory<Channel> {
                         pipe.addLast(new DefaultExceptionCaught());
                     }
                 });
+        ChannelFuture future = bootstrap.connect();
         try {
-            ChannelFuture future = bootstrap.connect().sync();
+            future.sync();
             return future.channel();
         } catch (InterruptedException e) {
+            // if there are something wrong, close
             LogUtils.e(TAG, e);
+            future.channel().close();
+            return null;
         }
-        return null;
     }
 
     @Override
@@ -61,7 +64,6 @@ public class ConnectionObjectFactory extends BasePooledObjectFactory<Channel> {
 
     @Override
     public PooledObject<Channel> wrap(Channel obj) {
-        //排查出错，之前直接返回个null，未对方法进行重写，导致出错，拿不出对象
         return new DefaultPooledObject<>(obj);
     }
 
@@ -77,6 +79,8 @@ public class ConnectionObjectFactory extends BasePooledObjectFactory<Channel> {
     }
 
     private void inactive(ChannelHandlerContext context) {
-        // TODO:
+        // because of validate begin use, this is safe.
+        // just ignore it.
+        ;
     }
 }

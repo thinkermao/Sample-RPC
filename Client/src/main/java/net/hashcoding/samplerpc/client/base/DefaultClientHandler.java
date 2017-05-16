@@ -18,7 +18,7 @@ public class DefaultClientHandler extends SimpleChannelInboundHandler<Command> {
                 long requestId = command.getRequestId();
                 Promise<InvokeResponse> promise =
                         ResponseMapHelper.responses.get(requestId);
-                InvokeResponse response = command.factoryFromBody(); //InvokeResponse.factory(command.getBody());
+                InvokeResponse response = command.factoryFromBody();
                 promise.setValue(response);
                 break;
         }
