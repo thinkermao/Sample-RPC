@@ -88,7 +88,7 @@ public class DefaultRegistry implements Registry, DefaultRegistryHandler.Callbac
         loopGroupBoss.shutdownGracefully();
     }
 
-    private void connectionInterrupted(ChannelHandler handler) {
+    private void connectionInterrupted(ChannelHandlerContext handler) {
         // TODO:
     }
 

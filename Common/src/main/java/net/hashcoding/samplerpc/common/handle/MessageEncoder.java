@@ -22,6 +22,7 @@ public class MessageEncoder extends MessageToByteEncoder<Command> {
             if (cmd.getBody() != null)
                 out.writeBytes(cmd.getBody());
         } catch (Exception e) {
+            // TODO:
             LogUtils.e(TAG, e);
             ctx.channel().close();
         }

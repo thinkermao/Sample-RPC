@@ -141,7 +141,6 @@ public class RegisterCurator implements RegistryClient, RegisterCuratorHandler.C
         loopGroup.shutdownGracefully();
     }
 
-    @Override
     public void inactive(Channel channel) {
         LogUtils.d(TAG, "connect close, try connect to after 1 second");
         channel.eventLoop().schedule(this::doConnect, 1, TimeUnit.SECONDS);

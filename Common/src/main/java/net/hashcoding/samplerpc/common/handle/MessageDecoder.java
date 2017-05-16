@@ -43,6 +43,7 @@ public class MessageDecoder extends LengthFieldBasedFrameDecoder {
             cmd.setRequestId(requestId);
             return cmd;
         } catch (Exception e) {
+            // TODO:
             ctx.channel().close().addListener((ChannelFutureListener)
                     future -> LogUtils.e(TAG, e));
         } finally {

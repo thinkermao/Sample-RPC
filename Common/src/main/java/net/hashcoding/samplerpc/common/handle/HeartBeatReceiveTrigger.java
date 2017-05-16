@@ -45,7 +45,7 @@ public class HeartBeatReceiveTrigger extends ChannelInboundHandlerAdapter {
         LogUtils.t(TAG, "May be "
                 + host.toString() + " has disconnect");
         if (callback != null) {
-            callback.run(context.handler());
+            callback.run(context);
         }
         context.close();
     }

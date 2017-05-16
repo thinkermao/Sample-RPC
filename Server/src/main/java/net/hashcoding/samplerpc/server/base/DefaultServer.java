@@ -106,7 +106,7 @@ public class DefaultServer implements Server {
                         ChannelPipeline pipe = channel.pipeline();
                         pipe.addLast(new IdleStateHandler(0, 5, 0));
                         pipe.addLast(new HeartBeatSendTrigger());
-                        pipe.addLast(new ConnectionWatchdog(DefaultServer.this::reconnect));
+                        pipe.addLast(new ConnectionWatchdog(handler -> DefaultServer.this.reconnect(handler)));
                         pipe.addLast(new MessageEncoder());
                         pipe.addLast(new MessageDecoder());
                     }

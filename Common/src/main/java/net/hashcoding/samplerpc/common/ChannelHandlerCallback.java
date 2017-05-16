@@ -1,10 +1,10 @@
 package net.hashcoding.samplerpc.common;
 
-import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
 
 /**
  * Created by MaoChuan on 2017/5/16.
  */
 public interface ChannelHandlerCallback {
-    void run(ChannelHandler handler);
+    void run(ChannelHandlerContext handler);
 }

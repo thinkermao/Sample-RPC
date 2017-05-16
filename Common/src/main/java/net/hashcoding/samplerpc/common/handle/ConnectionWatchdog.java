@@ -28,7 +28,7 @@ public class ConnectionWatchdog extends ChannelInboundHandlerAdapter {
 
         if (callback != null) {
             // notify client
-            callback.run(ctx.handler());
+            callback.run(ctx);
         }
         ctx.close();
     }
